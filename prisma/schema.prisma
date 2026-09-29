@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("CLIENT") // TRAINER or CLIENT
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clientProfile ClientProfile?
+}
+
+model ClientProfile {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone          String?
+  inscriptionDate DateTime @default(now())
+  age            Int?
+  gender         String?
+  observations   String?
+  status         String    @default("ACTIVE") // ACTIVE, DEBTOR, INACTIVE
+
+  measurements    Measurement[]
+  routines        Routine[]
+  attendances     Attendance[]
+  payments        Payment[]
+  workoutSessions WorkoutSession[]
+  goals           Goal[]
+  nutritionLogs   NutritionLog[]
+  progressPhotos  ProgressPhoto[]
+  aiReports       AiReport[]
+}
+
+model Measurement {
+  id              String        @id @default(cuid())
+  clientId        String
+  client          ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date            DateTime      @default(now())
+  
+  weight          Float?
+  height          Float?
+  bmi             Float?
+  age             Int?
+  sex             String?       // MALE | FEMALE
+  
+  neck            Float?
+  shoulders       Float?
+  chest           Float?
+  rightArm        Float?
+  leftArm         Float?
+  rightForearm    Float?
+  leftForearm     Float?
+  waist           Float?
+  abdomen         Float?
+  hip             Float?
+  rightThigh      Float?
+  leftThigh       Float?
+  rightCalf       Float?
+  leftCalf        Float?
+
+  // Auto-calculated body composition
+  bodyFat         Float?
+  leanMass        Float?
+  bmr             Float?
+  idealWeight     Float?
+  notes           String?
+  photoUrls       String?       // JSON array of photo paths
+}
+
+model Exercise {
+  id             String             @id @default(cuid())
+  name           String
+  muscleGroup    String
+  imageUrl       String?
+  description    String?
+  technique      String?
+  commonErrors   String?
+
+  routineExercises RoutineExercise[]
+  workoutSets      WorkoutSet[]
+}
+
+model Routine {
+  id          String        @id @default(cuid())
+  name        String
+  imageUrl    String?
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  exercises   RoutineExercise[]
+}
+
+model RoutineExercise {
+  id             String   @id @default(cuid())
+  routineId      String
+  routine        Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exerciseId     String
+  exercise       Exercise @relation(fields: [exerciseId], references: [id])
+  
+  sets           Int
+  reps           Int
+  recommendedWeight Float?
+  restTime       String?
+  observations   String?
+}
+
+model Attendance {
+  id        String        @id @default(cuid())
+  clientId  String
+  client    ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date      DateTime      @default(now())
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  amount      Float
+  paymentDate DateTime      @default(now())
+  dueDate     DateTime
+  status      String        @default("PAID") // PAID, PENDING, OVERDUE
+  balanceDue  Float         @default(0) // Monto que queda debiendo
+}
+
+model WorkoutSession {
+  id          String        @id @default(cuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  routineId   String?
+  date        DateTime      @default(now())
+  durationMin Int?
+  notes       String?
+  sets        WorkoutSet[]
+}
+
+model WorkoutSet {
+  id          String         @id @default(cuid())
+  sessionId   String
+  session     WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  exercise    Exercise       @relation(fields: [exerciseId], references: [id])
+  setNumber   Int
+  reps        Int
+  weightKg    Float
+  rpe         Int?
+}
+
+model Goal {
+  id           String        @id @default(cuid())
+  clientId     String
+  client       ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title        String
+  targetValue  Float
+  currentValue Float         @default(0)
+  unit         String
+  deadline     DateTime?
+  achieved     Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+}
+
+model NutritionLog {
+  id             String        @id @default(cuid())
+  clientId       String
+  client         ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date           DateTime      @default(now())
+  calories       Float         @default(0)
+  protein        Float         @default(0)
+  carbs          Float         @default(0)
+  fats           Float         @default(0)
+  waterMl        Float?        @default(0)
+  mealsJson      String?
+  targetCalories Float         @default(0)
+  targetProtein  Float         @default(0)
+  targetCarbs    Float         @default(0)
+  targetFats     Float         @default(0)
+}
+
+model ProgressPhoto {
+  id        String        @id @default(cuid())
+  clientId  String
+  client    ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date      DateTime      @default(now())
+  photoUrl  String
+  weight    Float?
+  tag       String?       @default("FRONT") // FRONT, SIDE, BACK
+  notes     String?
+}
+
+model AiReport {
+  id            String        @id @default(cuid())
+  clientId      String
+  client        ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title         String
+  date          DateTime      @default(now())
+  period        String        @default("MONTHLY") // 15D, 30D, 60D, MONTHLY
+  conclusion    String
+  statusType    String        @default("POSITIVE_RECOMPOSITION") // POSITIVE_RECOMPOSITION, FAT_LOSS, MUSCLE_GAIN, MUSCLE_LOSS_WARNING
+  weightDelta   Float?
+  muscleDelta   Float?
+  waistDelta    Float?
+  strengthDelta Float?
+}
